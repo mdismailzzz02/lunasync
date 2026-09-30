@@ -85,8 +85,8 @@ public class HomeFragment extends Fragment {
         } else {
             new Thread(() -> {
                 SupabaseClient client = new SupabaseClient(url, key);
-                int files = client.getTableCount("phone_sync_logs");
-                int whatsapp = client.getTableCount("whatsapp_sync_logs");
+                int files = client.getTableCountWhere("vault_files", "upload_source=eq.lunasync_mobile");
+                int whatsapp = client.getTableCountWhere("vault_files", "r2_key=ilike.*WhatsApp*");
                 int sms = client.getTableCount("phone_sms");
                 int calls = client.getTableCount("phone_call_logs");
                 int contacts = client.getTableCount("phone_contacts");
