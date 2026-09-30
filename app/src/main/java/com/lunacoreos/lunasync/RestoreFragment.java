@@ -230,16 +230,16 @@ public class RestoreFragment extends Fragment {
                                 if (destFile.getParentFile() != null) {
                                     destFile.getParentFile().mkdirs();
                                 }
+                                log("Downloading: " + destFile.getName() + " (" + (expectedSize > 0 ? (expectedSize/1024/1024) + " MB" : "Unknown Size") + ")");
                                 client.downloadFromPresignedUrl(presignedGetUrl, destFile);
-                                int current = downloaded.incrementAndGet();
-                                if (current % 10 == 0) {
-                                    log(folderName + " Sync: " + current + " / " + totalFiles + " downloaded... (Just saved: " + destFile.getName() + " - " + (expectedSize > 0 ? (expectedSize/1024) + " KB" : "Unknown Size") + ")");
-                                }
+                                downloaded.incrementAndGet();
                             }
                         } catch (Exception e) {
-                            int fCount = failed.incrementAndGet();
+                            String errorMsg = e.getMessage() != null ? e.getMessage() : e.toString();
                             String failedFile = fileLog != null ? fileLog.optString("filename", fileLog.optString("r2_key", "Unknown File")) : "Unknown File";
-                            log("❌ FAILED [" + fCount + "]: " + failedFile + " - " + e.getMessage());
+                            log("❌ Restore Failed for: " + failedFile);
+                            log("Reason: " + errorMsg);
+                            failed.incrementAndGet();
                         }
                     }));
                 }
