@@ -181,8 +181,7 @@ public class RestoreFragment extends Fragment {
 
     private void restoreMediaFolder(String folderName, SupabaseClient client) {
         log("Fetching " + folderName + " file list from Supabase...");
-        String tableName = folderName.equals("WhatsApp") ? "whatsapp_sync_logs" : "phone_sync_logs";
-        org.json.JSONArray files = client.fetchTableDataWithFilter(tableName, "file_path=ilike.*" + folderName + "*/*");
+        org.json.JSONArray files = client.fetchTableDataWithFilter("vault_files", "r2_key=ilike.*" + folderName + "*/*");
         int totalFiles = files.length();
         
         if (totalFiles > 0) {
@@ -212,11 +211,12 @@ public class RestoreFragment extends Fragment {
                     
                     futures.add(executor.submit(() -> {
                         try {
-                            String filePath = fileLog.getString("file_path");
+                            String r2Key = fileLog.getString("r2_key");
                             String mimeType = fileLog.optString("mime_type", "");
                             
-                            String relativePath = filePath.replace(externalRoot, "");
-                            String storagePath = finalBasePrefix + relativePath;
+                            String relativePath = r2Key.replace(finalBasePrefix, "");
+                            String filePath = externalRoot + relativePath;
+                            String storagePath = r2Key;
                             String encodedPath = Uri.encode(storagePath, "/");
                             
                             String presignedGetUrl = client.getR2PresignedUrl("get", encodedPath, mimeType);
@@ -226,6 +226,9 @@ public class RestoreFragment extends Fragment {
                             if (destFile.exists() && destFile.length() == fileLog.optLong("size_bytes", -1)) {
                                 downloaded.incrementAndGet();
                             } else {
+                                if (destFile.getParentFile() != null) {
+                                    destFile.getParentFile().mkdirs();
+                                }
                                 client.downloadFromPresignedUrl(presignedGetUrl, destFile);
                                 int current = downloaded.incrementAndGet();
                                 if (current % 100 == 0) {
