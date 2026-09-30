@@ -30,6 +30,7 @@ public class FileSyncWorker extends Worker {
     private static final String[] BASE_WATCH_FOLDERS = {"DCIM", "Pictures", "Documents", "Download"};
     private static final String BUCKET_NAME = "phone-backup";
     private static boolean isRunning = false;
+    private static java.util.Map<String, String> subcollectionCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     public FileSyncWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -175,9 +176,40 @@ public class FileSyncWorker extends Worker {
                         client.uploadToPresignedUrl(presignedUrl, fis, file.length(), mimeType, file.getName());
                         fis.close();
                         
+                        // Dynamic Subfolder mapping
+                        String subfolderName = "Other";
+                        if (filePath.contains("WhatsApp")) subfolderName = "WhatsApp";
+                        else if (filePath.contains("DCIM") || filePath.contains("Camera")) subfolderName = "Camera";
+                        else if (filePath.contains("Pictures")) subfolderName = "Pictures";
+                        else if (filePath.contains("Download")) subfolderName = "Downloads";
+                        
+                        String assignedCollectionId = finalCollectionId;
+                        
+                        // Thread-safe fetch or create subcollection with in-memory caching!
+                        synchronized(client) {
+                            String cacheKey = finalCollectionId + "_" + subfolderName;
+                            if (subcollectionCache.containsKey(cacheKey)) {
+                                assignedCollectionId = subcollectionCache.get(cacheKey);
+                            } else {
+                                String fetchedId = client.getSubcollectionId(subfolderName, finalCollectionId);
+                                if (fetchedId != null) {
+                                    subcollectionCache.put(cacheKey, fetchedId);
+                                    assignedCollectionId = fetchedId;
+                                } else {
+                                    // Create it!
+                                    String newPrefix = finalBasePrefix + subfolderName.toLowerCase() + "/";
+                                    String newId = client.createVaultCollection(subfolderName, newPrefix, finalCollectionId);
+                                    if (newId != null) {
+                                        subcollectionCache.put(cacheKey, newId);
+                                        assignedCollectionId = newId;
+                                    }
+                                }
+                            }
+                        }
+                        
                         // 3. Log to Supabase Database (vault_files)
                         org.json.JSONObject logObj = new org.json.JSONObject();
-                        logObj.put("collection_id", finalCollectionId);
+                        logObj.put("collection_id", assignedCollectionId);
                         logObj.put("r2_key", storagePath);
                         logObj.put("filename", file.getName());
                         logObj.put("size_bytes", file.length());

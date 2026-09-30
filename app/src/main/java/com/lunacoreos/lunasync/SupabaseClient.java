@@ -162,7 +162,32 @@ public class SupabaseClient {
         return null;
     }
 
-    public String createVaultCollection(String name, String keyPrefix) {
+    public String getSubcollectionId(String name, String parentId) {
+        try {
+            String urlStr = baseUrl + "/rest/v1/vault_collections?name=eq." + Uri.encode(name) + "&parent_id=eq." + parentId + "&select=id&limit=1";
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("apikey", anonKey);
+            conn.setRequestProperty("Authorization", "Bearer " + anonKey);
+            
+            if (conn.getResponseCode() == 200) {
+                java.util.Scanner s = new java.util.Scanner(conn.getInputStream()).useDelimiter("\\A");
+                String response = s.hasNext() ? s.next() : "";
+                s.close();
+                org.json.JSONArray array = new org.json.JSONArray(response);
+                if (array.length() > 0) {
+                    return array.getJSONObject(0).getString("id");
+                }
+            }
+            conn.disconnect();
+        } catch (Exception e) {
+            SyncLogger.log("getSubcollectionId Exception: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public String createVaultCollection(String name, String keyPrefix, String parentId) {
         try {
             org.json.JSONObject payload = new org.json.JSONObject();
             payload.put("name", name);
@@ -170,6 +195,9 @@ public class SupabaseClient {
             payload.put("key_prefix", keyPrefix);
             payload.put("is_hidden", false);
             payload.put("is_secret", false);
+            if (parentId != null) {
+                payload.put("parent_id", parentId);
+            }
             
             org.json.JSONArray array = new org.json.JSONArray();
             array.put(payload);
