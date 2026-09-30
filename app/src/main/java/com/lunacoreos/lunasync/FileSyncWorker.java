@@ -176,35 +176,39 @@ public class FileSyncWorker extends Worker {
                         client.uploadToPresignedUrl(presignedUrl, fis, file.length(), mimeType, file.getName());
                         fis.close();
                         
-                        // Dynamic Subfolder mapping
-                        String subfolderName = "Other";
-                        if (filePath.contains("WhatsApp")) subfolderName = "WhatsApp";
-                        else if (filePath.contains("DCIM") || filePath.contains("Camera")) subfolderName = "Camera";
-                        else if (filePath.contains("Pictures")) subfolderName = "Pictures";
-                        else if (filePath.contains("Download")) subfolderName = "Downloads";
-                        
+                        // Dynamic True Hierarchy mapping
                         String assignedCollectionId = finalCollectionId;
+                        String relativePathDir = relativePath;
                         
-                        // Thread-safe fetch or create subcollection with in-memory caching!
-                        synchronized(client) {
-                            String cacheKey = finalCollectionId + "_" + subfolderName;
-                            if (subcollectionCache.containsKey(cacheKey)) {
-                                assignedCollectionId = subcollectionCache.get(cacheKey);
-                            } else {
-                                String fetchedId = client.getSubcollectionId(subfolderName, finalCollectionId);
-                                if (fetchedId != null) {
-                                    subcollectionCache.put(cacheKey, fetchedId);
-                                    assignedCollectionId = fetchedId;
-                                } else {
-                                    // Create it!
-                                    String newPrefix = finalBasePrefix + subfolderName.toLowerCase() + "/";
-                                    String newId = client.createVaultCollection(subfolderName, newPrefix, finalCollectionId);
-                                    if (newId != null) {
-                                        subcollectionCache.put(cacheKey, newId);
-                                        assignedCollectionId = newId;
+                        String[] pathParts = relativePathDir.split("/");
+                        if (pathParts.length > 1) {
+                            String currentParentId = finalCollectionId;
+                            String currentPrefix = finalBasePrefix;
+                            
+                            for (int i = 0; i < pathParts.length - 1; i++) {
+                                String folderName = pathParts[i];
+                                currentPrefix = currentPrefix + folderName + "/";
+                                String cacheKey = currentParentId + "_" + folderName;
+                                
+                                synchronized(client) {
+                                    if (subcollectionCache.containsKey(cacheKey)) {
+                                        currentParentId = subcollectionCache.get(cacheKey);
+                                    } else {
+                                        String fetchedId = client.getSubcollectionId(folderName, currentParentId);
+                                        if (fetchedId != null) {
+                                            subcollectionCache.put(cacheKey, fetchedId);
+                                            currentParentId = fetchedId;
+                                        } else {
+                                            String newId = client.createVaultCollection(folderName, currentPrefix, currentParentId);
+                                            if (newId != null) {
+                                                subcollectionCache.put(cacheKey, newId);
+                                                currentParentId = newId;
+                                            }
+                                        }
                                     }
                                 }
                             }
+                            assignedCollectionId = currentParentId;
                         }
                         
                         // 3. Log to Supabase Database (vault_files)
