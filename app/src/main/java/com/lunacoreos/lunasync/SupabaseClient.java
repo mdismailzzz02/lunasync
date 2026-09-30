@@ -4,6 +4,7 @@ import org.json.JSONArray;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import android.net.Uri;
 
 /**
  * Lightweight HTTP client for Supabase REST API.
