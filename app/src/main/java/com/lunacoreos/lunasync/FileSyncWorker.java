@@ -92,7 +92,7 @@ public class FileSyncWorker extends Worker {
             
             if (collectionId == null || collectionId.isEmpty()) {
                 SyncLogger.log("Collection not found. Auto-creating 'Phone Backup' folder...");
-                collectionId = client.createVaultCollection("Phone Backup", basePrefix);
+                collectionId = client.createVaultCollection("Phone Backup", basePrefix, null);
                 
                 if (collectionId == null) {
                     SyncLogger.log("FileSync failed: Could not create collection_id for prefix " + basePrefix);
