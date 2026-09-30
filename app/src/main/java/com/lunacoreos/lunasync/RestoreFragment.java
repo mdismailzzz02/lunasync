@@ -223,7 +223,8 @@ public class RestoreFragment extends Fragment {
                             File destFile = new File(filePath);
                             
                             // Skip if the file already exists and the size matches
-                            if (destFile.exists() && destFile.length() == fileLog.optLong("size_bytes", -1)) {
+                            long expectedSize = fileLog.optLong("size_bytes", -1);
+                            if (destFile.exists() && destFile.length() == expectedSize) {
                                 downloaded.incrementAndGet();
                             } else {
                                 if (destFile.getParentFile() != null) {
@@ -231,12 +232,14 @@ public class RestoreFragment extends Fragment {
                                 }
                                 client.downloadFromPresignedUrl(presignedGetUrl, destFile);
                                 int current = downloaded.incrementAndGet();
-                                if (current % 100 == 0) {
-                                    log(folderName + " Sync: " + current + " / " + totalFiles + " downloaded...");
+                                if (current % 10 == 0) {
+                                    log(folderName + " Sync: " + current + " / " + totalFiles + " downloaded... (Just saved: " + destFile.getName() + " - " + (expectedSize > 0 ? (expectedSize/1024) + " KB" : "Unknown Size") + ")");
                                 }
                             }
                         } catch (Exception e) {
-                            failed.incrementAndGet();
+                            int fCount = failed.incrementAndGet();
+                            String failedFile = fileLog != null ? fileLog.optString("filename", fileLog.optString("r2_key", "Unknown File")) : "Unknown File";
+                            log("❌ FAILED [" + fCount + "]: " + failedFile + " - " + e.getMessage());
                         }
                     }));
                 }
