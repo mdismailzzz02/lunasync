@@ -196,6 +196,12 @@ public class SupabaseClient {
             payload.put("key_prefix", keyPrefix);
             payload.put("is_hidden", false);
             payload.put("is_secret", false);
+            
+            String[] prefixParts = keyPrefix.split("/");
+            if (prefixParts.length >= 2 && prefixParts[0].equals("vault")) {
+                payload.put("user_id", prefixParts[1]);
+            }
+            
             if (parentId != null) {
                 payload.put("parent_id", parentId);
             }
