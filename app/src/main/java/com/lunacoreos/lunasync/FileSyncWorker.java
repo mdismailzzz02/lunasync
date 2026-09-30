@@ -79,7 +79,15 @@ public class FileSyncWorker extends Worker {
         
         if (collectionId.isEmpty()) {
             collectionId = client.getCollectionIdForPrefix(basePrefix);
-            if (collectionId == null) {
+            
+            // If manual lookup failed (maybe typo in Settings or URL encoding issue), fallback to auto-detect!
+            if (collectionId == null && backupInfo != null) {
+                SyncLogger.log("Manual prefix lookup failed, falling back to auto-detect.");
+                collectionId = backupInfo.optString("id", "");
+                basePrefix = backupInfo.optString("key_prefix", "");
+            }
+            
+            if (collectionId == null || collectionId.isEmpty()) {
                 SyncLogger.log("FileSync failed: Could not find collection_id for prefix " + basePrefix);
                 return Result.failure();
             }

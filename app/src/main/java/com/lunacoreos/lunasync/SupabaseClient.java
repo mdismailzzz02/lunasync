@@ -126,13 +126,15 @@ public class SupabaseClient {
     
     public String getCollectionIdForPrefix(String prefix) {
         try {
-            URL url = new URL(baseUrl + "/rest/v1/vault_collections?key_prefix=eq." + java.net.URLEncoder.encode(prefix, "UTF-8") + "&select=id&limit=1");
+            String safePrefix = java.net.URLEncoder.encode(prefix, "UTF-8").replace("+", "%20");
+            URL url = new URL(baseUrl + "/rest/v1/vault_collections?key_prefix=eq." + safePrefix + "&select=id&limit=1");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("apikey", apiKey);
             conn.setRequestProperty("Authorization", "Bearer " + apiKey);
             
-            if (conn.getResponseCode() >= 200 && conn.getResponseCode() < 300) {
+            int code = conn.getResponseCode();
+            if (code >= 200 && code < 300) {
                 java.io.InputStream is = conn.getInputStream();
                 java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
                 String result = s.hasNext() ? s.next() : "";
@@ -140,9 +142,23 @@ public class SupabaseClient {
                 org.json.JSONArray array = new org.json.JSONArray(result);
                 if (array.length() > 0) {
                     return array.getJSONObject(0).getString("id");
+                } else {
+                    SyncLogger.log("getCollectionIdForPrefix: Collection not found for " + prefix);
+                }
+            } else {
+                java.io.InputStream es = conn.getErrorStream();
+                if (es != null) {
+                    java.util.Scanner s = new java.util.Scanner(es).useDelimiter("\\A");
+                    SyncLogger.log("getCollectionIdForPrefix HTTP " + code + ": " + (s.hasNext() ? s.next() : ""));
+                    es.close();
+                } else {
+                    SyncLogger.log("getCollectionIdForPrefix HTTP " + code);
                 }
             }
-        } catch (Exception e) {}
+            conn.disconnect();
+        } catch (Exception e) {
+            SyncLogger.log("getCollectionIdForPrefix Exception: " + e.getMessage());
+        }
         return null;
     }
 
