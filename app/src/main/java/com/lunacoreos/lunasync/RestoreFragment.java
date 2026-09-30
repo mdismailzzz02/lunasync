@@ -188,8 +188,15 @@ public class RestoreFragment extends Fragment {
         if (totalFiles > 0) {
             log("Found " + totalFiles + " " + folderName + " files. Starting 10-thread download...");
             
-            String basePrefix = client.getPhoneBackupPrefix();
-            if (basePrefix != null) {
+            org.json.JSONObject backupInfo = client.getPhoneBackupInfo();
+            String basePrefix = null;
+            if (backupInfo != null) {
+                basePrefix = backupInfo.optString("key_prefix", null);
+            }
+            if (basePrefix == null) {
+                basePrefix = requireContext().getSharedPreferences("LunaSyncPrefs", 0).getString("vaultPrefix", "vault/67539ee2-a1b0-405d-bbc1-c33dcbd198e6/gallery-phone-backup/");
+            }
+            if (basePrefix != null && !basePrefix.isEmpty()) {
                 if (!basePrefix.endsWith("/")) basePrefix += "/";
                 final String finalBasePrefix = basePrefix;
                 

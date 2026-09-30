@@ -63,9 +63,13 @@ public class FileSyncWorker extends Worker {
         SupabaseClient client = new SupabaseClient(url, key);
 
         // Get the actual Vault folder prefix for "Phone backup"
+        org.json.JSONObject backupInfo = client.getPhoneBackupInfo();
         String basePrefix = prefs.getString("vaultPrefix", "");
-        if (basePrefix.isEmpty()) {
-            basePrefix = client.getPhoneBackupPrefix();
+        String collectionId = "";
+        
+        if (basePrefix.isEmpty() && backupInfo != null) {
+            basePrefix = backupInfo.optString("key_prefix", "");
+            collectionId = backupInfo.optString("id", "");
         }
         
         if (basePrefix == null || basePrefix.isEmpty()) {
@@ -73,8 +77,17 @@ public class FileSyncWorker extends Worker {
             basePrefix = "vault/67539ee2-a1b0-405d-bbc1-c33dcbd198e6/gallery-phone-backup/";
         }
         
+        if (collectionId.isEmpty()) {
+            collectionId = client.getCollectionIdForPrefix(basePrefix);
+            if (collectionId == null) {
+                SyncLogger.log("FileSync failed: Could not find collection_id for prefix " + basePrefix);
+                return Result.failure();
+            }
+        }
+        
         if (!basePrefix.endsWith("/")) basePrefix += "/";
         final String finalBasePrefix = basePrefix;
+        final String finalCollectionId = collectionId;
 
         // Load synced file cache from SharedPreferences (Thread-safe)
         Set<String> syncedFiles = Collections.synchronizedSet(new HashSet<>(prefs.getStringSet("syncedFiles", new HashSet<>())));
@@ -83,16 +96,15 @@ public class FileSyncWorker extends Worker {
         if (syncedFiles.isEmpty()) {
             SyncLogger.log("Memory is blank! Downloading global file sync history from Supabase...");
             try {
-                org.json.JSONArray history = client.fetchTableData("phone_sync_logs", "ALL");
+                org.json.JSONArray history = client.fetchTableDataWithFilter("vault_files", "r2_key=ilike." + finalBasePrefix + "*");
+                String sdcardRoot = Environment.getExternalStorageDirectory().getAbsolutePath() + "/";
                 for (int i = 0; i < history.length(); i++) {
-                    syncedFiles.add(history.getJSONObject(i).optString("file_path"));
+                    String r2Key = history.getJSONObject(i).optString("r2_key");
+                    if (r2Key.startsWith(finalBasePrefix)) {
+                        String relativePath = r2Key.substring(finalBasePrefix.length());
+                        syncedFiles.add(sdcardRoot + relativePath);
+                    }
                 }
-                
-                org.json.JSONArray waHistory = client.fetchTableData("whatsapp_sync_logs", "ALL");
-                for (int i = 0; i < waHistory.length(); i++) {
-                    syncedFiles.add(waHistory.getJSONObject(i).optString("file_path"));
-                }
-                
                 SyncLogger.log("Smart Sync: Injected " + syncedFiles.size() + " known files into memory!");
                 prefs.edit().putStringSet("syncedFiles", syncedFiles).apply();
             } catch (Exception e) {
@@ -149,9 +161,10 @@ public class FileSyncWorker extends Worker {
                         client.uploadToPresignedUrl(presignedUrl, fis, file.length(), mimeType, file.getName());
                         fis.close();
                         
-                        // 3. Log to Supabase Database
+                        // 3. Log to Supabase Database (vault_files)
                         org.json.JSONObject logObj = new org.json.JSONObject();
-                        logObj.put("file_path", file.getAbsolutePath());
+                        logObj.put("collection_id", finalCollectionId);
+                        logObj.put("r2_key", storagePath);
                         logObj.put("filename", file.getName());
                         logObj.put("size_bytes", file.length());
                         logObj.put("mime_type", mimeType);
@@ -165,9 +178,8 @@ public class FileSyncWorker extends Worker {
                         org.json.JSONArray logArray = new org.json.JSONArray();
                         logArray.put(logObj);
                         
-                        // Upsert based ONLY on file_path so the global log is perfectly deduplicated!
-                        String targetTable = filePath.contains("WhatsApp") ? "whatsapp_sync_logs" : "phone_sync_logs";
-                        client.postToTable(targetTable, logArray, "file_path");
+                        // Upsert based ONLY on r2_key so it is perfectly deduplicated!
+                        client.postToTable("vault_files", logArray, "r2_key");
 
                         // Mark as synced
                         syncedFiles.add(filePath);

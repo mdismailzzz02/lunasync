@@ -98,10 +98,10 @@ public class SupabaseClient {
         return -1;
     }
 
-    public String getPhoneBackupPrefix() {
+    public org.json.JSONObject getPhoneBackupInfo() {
         try {
             // Use ilike to make it case-insensitive and allow it to be inside subfolders (ignore parent_id constraint)
-            URL url = new URL(baseUrl + "/rest/v1/vault_collections?name=ilike.*phone%20backup*&select=key_prefix&limit=1");
+            URL url = new URL(baseUrl + "/rest/v1/vault_collections?name=ilike.*phone%20backup*&select=id,key_prefix&limit=1");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("apikey", apiKey);
@@ -117,27 +117,32 @@ public class SupabaseClient {
                 
                 org.json.JSONArray array = new org.json.JSONArray(result);
                 if (array.length() > 0) {
-                    return array.getJSONObject(0).getString("key_prefix");
-                } else {
-                    // Fallback: set your own vault prefix in Settings if auto-detection fails
-                    SyncLogger.log("getPhoneBackupPrefix: Could not detect vault prefix. Please configure manually in Settings.");
-                    return null;
-                }
-            } else {
-                java.io.InputStream es = conn.getErrorStream();
-                if (es != null) {
-                    java.util.Scanner s = new java.util.Scanner(es).useDelimiter("\\A");
-                    SyncLogger.log("getPhoneBackupPrefix error: HTTP " + conn.getResponseCode() + " " + (s.hasNext() ? s.next() : ""));
-                    es.close();
-                } else {
-                    SyncLogger.log("getPhoneBackupPrefix error: HTTP " + conn.getResponseCode());
+                    return array.getJSONObject(0);
                 }
             }
-            conn.disconnect();
-        } catch (Exception e) {
-            SyncLogger.log("getPhoneBackupPrefix exception: " + e.getMessage());
-            e.printStackTrace();
-        }
+        } catch (Exception e) {}
+        return null;
+    }
+    
+    public String getCollectionIdForPrefix(String prefix) {
+        try {
+            URL url = new URL(baseUrl + "/rest/v1/vault_collections?key_prefix=eq." + java.net.URLEncoder.encode(prefix, "UTF-8") + "&select=id&limit=1");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("apikey", apiKey);
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            
+            if (conn.getResponseCode() >= 200 && conn.getResponseCode() < 300) {
+                java.io.InputStream is = conn.getInputStream();
+                java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+                String result = s.hasNext() ? s.next() : "";
+                is.close();
+                org.json.JSONArray array = new org.json.JSONArray(result);
+                if (array.length() > 0) {
+                    return array.getJSONObject(0).getString("id");
+                }
+            }
+        } catch (Exception e) {}
         return null;
     }
 
