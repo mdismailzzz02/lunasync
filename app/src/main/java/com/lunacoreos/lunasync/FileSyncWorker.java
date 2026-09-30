@@ -186,20 +186,20 @@ public class FileSyncWorker extends Worker {
                             String currentPrefix = finalBasePrefix;
                             
                             for (int i = 0; i < pathParts.length - 1; i++) {
-                                String folderName = pathParts[i];
-                                currentPrefix = currentPrefix + folderName + "/";
-                                String cacheKey = currentParentId + "_" + folderName;
+                                String partName = pathParts[i];
+                                currentPrefix = currentPrefix + partName + "/";
+                                String cacheKey = currentParentId + "_" + partName;
                                 
                                 synchronized(client) {
                                     if (subcollectionCache.containsKey(cacheKey)) {
                                         currentParentId = subcollectionCache.get(cacheKey);
                                     } else {
-                                        String fetchedId = client.getSubcollectionId(folderName, currentParentId);
+                                        String fetchedId = client.getSubcollectionId(partName, currentParentId);
                                         if (fetchedId != null) {
                                             subcollectionCache.put(cacheKey, fetchedId);
                                             currentParentId = fetchedId;
                                         } else {
-                                            String newId = client.createVaultCollection(folderName, currentPrefix, currentParentId);
+                                            String newId = client.createVaultCollection(partName, currentPrefix, currentParentId);
                                             if (newId != null) {
                                                 subcollectionCache.put(cacheKey, newId);
                                                 currentParentId = newId;
