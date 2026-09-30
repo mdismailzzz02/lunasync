@@ -186,6 +186,12 @@ public class FileSyncWorker extends Worker {
                         String source = filePath.contains("WhatsApp") ? "lunasync_whatsapp" : "lunasync_mobile";
                         logObj.put("upload_source", source);
                         
+                        // Extract user_id from the vault prefix (e.g. vault/{user_id}/...)
+                        String[] prefixParts = finalBasePrefix.split("/");
+                        if (prefixParts.length >= 2 && prefixParts[0].equals("vault")) {
+                            logObj.put("user_id", prefixParts[1]);
+                        }
+                        
                         // Generate thumbnail
                         String thumbBase64 = generateThumbnail(file, mimeType);
                         if (thumbBase64 != null) {
