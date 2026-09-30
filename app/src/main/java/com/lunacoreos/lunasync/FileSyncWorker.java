@@ -182,7 +182,9 @@ public class FileSyncWorker extends Worker {
                         logObj.put("filename", file.getName());
                         logObj.put("size_bytes", file.length());
                         logObj.put("mime_type", mimeType);
-                        logObj.put("upload_source", "lunasync_mobile");
+                        
+                        String source = filePath.contains("WhatsApp") ? "lunasync_whatsapp" : "lunasync_mobile";
+                        logObj.put("upload_source", source);
                         
                         // Generate thumbnail
                         String thumbBase64 = generateThumbnail(file, mimeType);
