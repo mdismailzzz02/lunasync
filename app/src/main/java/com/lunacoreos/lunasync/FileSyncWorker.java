@@ -213,7 +213,9 @@ public class FileSyncWorker extends Worker {
                             prefs.edit().putStringSet("syncedFiles", syncedFiles).apply();
                         }
                     } catch (Exception e) {
-                        SyncLogger.log("Failed: " + file.getName() + " — " + e.getMessage());
+                        String errorMsg = e.getMessage() != null ? e.getMessage() : e.toString();
+                        SyncLogger.log("❌ Sync Failed for: " + file.getAbsolutePath());
+                        SyncLogger.log("Reason: " + errorMsg);
                         failed.incrementAndGet();
                     }
                 }));
