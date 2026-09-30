@@ -63,11 +63,16 @@ public class FileSyncWorker extends Worker {
         SupabaseClient client = new SupabaseClient(url, key);
 
         // Get the actual Vault folder prefix for "Phone backup"
-        String basePrefix = client.getPhoneBackupPrefix();
-        if (basePrefix == null) {
-            SyncLogger.log("FileSync failed: Could not find 'Phone backup' in vault_collections.");
-            return Result.failure();
+        String basePrefix = prefs.getString("vaultPrefix", "");
+        if (basePrefix.isEmpty()) {
+            basePrefix = client.getPhoneBackupPrefix();
         }
+        
+        if (basePrefix == null || basePrefix.isEmpty()) {
+            // Hardcode default as last resort
+            basePrefix = "vault/67539ee2-a1b0-405d-bbc1-c33dcbd198e6/gallery-phone-backup/";
+        }
+        
         if (!basePrefix.endsWith("/")) basePrefix += "/";
         final String finalBasePrefix = basePrefix;
 

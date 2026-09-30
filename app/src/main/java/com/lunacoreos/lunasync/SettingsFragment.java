@@ -16,7 +16,7 @@ import androidx.fragment.app.Fragment;
 
 public class SettingsFragment extends Fragment {
 
-    private EditText etUrl, etKey;
+    private EditText etUrl, etKey, etVaultPrefix;
     private Button btnSave, btnRequestPerms;
     private TextView tvDeviceId, tvConnectionStatus;
     private SharedPreferences prefs;
@@ -29,6 +29,7 @@ public class SettingsFragment extends Fragment {
 
         etUrl = v.findViewById(R.id.etSupabaseUrl);
         etKey = v.findViewById(R.id.etSupabaseKey);
+        etVaultPrefix = v.findViewById(R.id.etVaultPrefix);
         btnSave = v.findViewById(R.id.btnSaveConfig);
         btnRequestPerms = v.findViewById(R.id.btnRequestPerms);
         tvDeviceId = v.findViewById(R.id.tvSettingsDeviceId);
@@ -37,11 +38,15 @@ public class SettingsFragment extends Fragment {
         // Restore saved config (pre-filled with LunaCoreOS defaults)
         String defaultUrl = "https://llseujnjhjrwmzhwfmoq.supabase.co";
         String defaultKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsc2V1am5qaGpyd216aHdmbW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MTM1NzQsImV4cCI6MjA5MzE4OTU3NH0.sL45a5IZcMZWZSZS8FVNWbNZa7NiHMoVCcNeohV5ndc";
+        String defaultVaultPrefix = "vault/67539ee2-a1b0-405d-bbc1-c33dcbd198e6/gallery-phone-backup/";
         
         String savedUrl = prefs.getString("supabaseUrl", "");
         String savedKey = prefs.getString("supabaseKey", "");
+        String savedVaultPrefix = prefs.getString("vaultPrefix", "");
+        
         etUrl.setText(savedUrl.isEmpty() ? defaultUrl : savedUrl);
         etKey.setText(savedKey.isEmpty() ? defaultKey : savedKey);
+        etVaultPrefix.setText(savedVaultPrefix.isEmpty() ? defaultVaultPrefix : savedVaultPrefix);
         tvDeviceId.setText(prefs.getString("deviceId", "Not generated"));
         updateConnectionStatus();
 
@@ -50,6 +55,7 @@ public class SettingsFragment extends Fragment {
             prefs.edit()
                 .putString("supabaseUrl", defaultUrl)
                 .putString("supabaseKey", defaultKey)
+                .putString("vaultPrefix", defaultVaultPrefix)
                 .apply();
             updateConnectionStatus();
             SyncLogger.log("Default Supabase config loaded ✓");
@@ -75,6 +81,7 @@ public class SettingsFragment extends Fragment {
     private void saveConfig() {
         String url = etUrl.getText().toString().trim();
         String key = etKey.getText().toString().trim();
+        String vaultPrefix = etVaultPrefix.getText().toString().trim();
 
         if (url.isEmpty() || key.isEmpty()) {
             Toast.makeText(requireContext(), "Please fill in both fields.", Toast.LENGTH_SHORT).show();
@@ -86,6 +93,7 @@ public class SettingsFragment extends Fragment {
         prefs.edit()
             .putString("supabaseUrl", url)
             .putString("supabaseKey", key)
+            .putString("vaultPrefix", vaultPrefix)
             .apply();
 
         SyncLogger.log("Configuration saved ✓");
