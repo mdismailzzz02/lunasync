@@ -169,8 +169,8 @@ public class SupabaseClient {
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
-            conn.setRequestProperty("apikey", anonKey);
-            conn.setRequestProperty("Authorization", "Bearer " + anonKey);
+            conn.setRequestProperty("apikey", apiKey);
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
             
             if (conn.getResponseCode() == 200) {
                 java.util.Scanner s = new java.util.Scanner(conn.getInputStream()).useDelimiter("\\A");
