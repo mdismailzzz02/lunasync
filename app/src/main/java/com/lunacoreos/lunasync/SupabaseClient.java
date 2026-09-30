@@ -100,8 +100,8 @@ public class SupabaseClient {
 
     public org.json.JSONObject getPhoneBackupInfo() {
         try {
-            // Use ilike to make it case-insensitive and allow it to be inside subfolders (ignore parent_id constraint)
-            URL url = new URL(baseUrl + "/rest/v1/vault_collections?name=ilike.*phone%20backup*&select=id,key_prefix&limit=1");
+            // Use wildcard between phone and backup to match "Phone Backup", "phone-backup", etc.
+            URL url = new URL(baseUrl + "/rest/v1/vault_collections?name=ilike.*phone*backup*&select=id,key_prefix&limit=1");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("apikey", apiKey);

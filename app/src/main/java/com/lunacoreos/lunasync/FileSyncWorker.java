@@ -77,6 +77,8 @@ public class FileSyncWorker extends Worker {
             basePrefix = "vault/67539ee2-a1b0-405d-bbc1-c33dcbd198e6/gallery-phone-backup/";
         }
         
+        if (!basePrefix.endsWith("/")) basePrefix += "/";
+        
         if (collectionId.isEmpty()) {
             collectionId = client.getCollectionIdForPrefix(basePrefix);
             
@@ -93,7 +95,6 @@ public class FileSyncWorker extends Worker {
             }
         }
         
-        if (!basePrefix.endsWith("/")) basePrefix += "/";
         final String finalBasePrefix = basePrefix;
         final String finalCollectionId = collectionId;
 
