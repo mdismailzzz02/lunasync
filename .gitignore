@@ -1,0 +1,26 @@
+# Built outputs
+build/
+.gradle/
+
+# Local properties (contains SDK path — never commit this)
+local.properties
+
+# IDE files
+.idea/
+*.iml
+
+# Android Studio Navigation editor temp files
+.navigation/
+
+# Keystore files (NEVER commit these)
+*.jks
+*.keystore
+
+# Google Services JSON (contains project IDs)
+google-services.json
+
+# Crash reports
+crashes/
+
+# DS Store (macOS)
+.DS_Store

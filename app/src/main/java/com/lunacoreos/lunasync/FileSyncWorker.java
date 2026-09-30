@@ -1,0 +1,244 @@
+package com.lunacoreos.lunasync;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.Environment;
+import android.webkit.MimeTypeMap;
+
+import androidx.annotation.NonNull;
+import androidx.work.Worker;
+import androidx.work.WorkerParameters;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Collections;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Background worker that scans DCIM, Pictures, Documents, Download
+ * and uploads new files to Supabase Storage using 8KB streaming.
+ * Zero RAM usage regardless of file size.
+ */
+public class FileSyncWorker extends Worker {
+
+    private static final String[] BASE_WATCH_FOLDERS = {"DCIM", "Pictures", "Documents", "Download"};
+    private static final String BUCKET_NAME = "phone-backup";
+    private static boolean isRunning = false;
+
+    public FileSyncWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+        super(context, workerParams);
+    }
+
+    @NonNull
+    @Override
+    public Result doWork() {
+        if (isRunning) {
+            SyncLogger.log("Sync is already running! Skipping duplicate trigger.");
+            return Result.success();
+        }
+        isRunning = true;
+        
+        try {
+            SharedPreferences prefs = getApplicationContext().getSharedPreferences("LunaSyncPrefs", Context.MODE_PRIVATE);
+            String url = prefs.getString("supabaseUrl", null);
+            String key = prefs.getString("supabaseKey", null);
+            String deviceId = prefs.getString("deviceId", null);
+
+            if (url == null || key == null || deviceId == null) {
+                SyncLogger.log("FileSync skipped: not configured.");
+                return Result.failure();
+            }
+        
+        java.util.List<String> watchFolders = new java.util.ArrayList<>(java.util.Arrays.asList(BASE_WATCH_FOLDERS));
+        if (prefs.getBoolean("whatsappSyncEnabled", true)) {
+            watchFolders.add("Android/media/com.whatsapp/WhatsApp");
+        }
+
+        SupabaseClient client = new SupabaseClient(url, key);
+
+        // Get the actual Vault folder prefix for "Phone backup"
+        String basePrefix = client.getPhoneBackupPrefix();
+        if (basePrefix == null) {
+            SyncLogger.log("FileSync failed: Could not find 'Phone backup' in vault_collections.");
+            return Result.failure();
+        }
+        if (!basePrefix.endsWith("/")) basePrefix += "/";
+        final String finalBasePrefix = basePrefix;
+
+        // Load synced file cache from SharedPreferences (Thread-safe)
+        Set<String> syncedFiles = Collections.synchronizedSet(new HashSet<>(prefs.getStringSet("syncedFiles", new HashSet<>())));
+        
+        // SMART SYNC: If this is a brand new phone (or memory was wiped), download the global history from Supabase!
+        if (syncedFiles.isEmpty()) {
+            SyncLogger.log("Memory is blank! Downloading global file sync history from Supabase...");
+            try {
+                org.json.JSONArray history = client.fetchTableData("phone_sync_logs", "ALL");
+                for (int i = 0; i < history.length(); i++) {
+                    syncedFiles.add(history.getJSONObject(i).optString("file_path"));
+                }
+                
+                org.json.JSONArray waHistory = client.fetchTableData("whatsapp_sync_logs", "ALL");
+                for (int i = 0; i < waHistory.length(); i++) {
+                    syncedFiles.add(waHistory.getJSONObject(i).optString("file_path"));
+                }
+                
+                SyncLogger.log("Smart Sync: Injected " + syncedFiles.size() + " known files into memory!");
+                prefs.edit().putStringSet("syncedFiles", syncedFiles).apply();
+            } catch (Exception e) {
+                SyncLogger.log("Failed to fetch global history: " + e.getMessage());
+            }
+        }
+
+        AtomicInteger uploaded = new AtomicInteger(0);
+        AtomicInteger failed = new AtomicInteger(0);
+        
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        java.util.List<Future<?>> futures = new java.util.ArrayList<>();
+
+        for (String folderName : watchFolders) {
+            File folder = new File(Environment.getExternalStorageDirectory(), folderName);
+            if (!folder.exists() || !folder.isDirectory()) {
+                SyncLogger.log("Folder not found: " + folderName);
+                continue;
+            }
+
+            SyncLogger.log("Scanning " + folderName + "...");
+            java.util.List<File> files = new java.util.ArrayList<>();
+            scanRecursive(folder, files);
+            SyncLogger.log("Found " + files.size() + " files in " + folderName);
+
+            for (File file : files) {
+                String filePath = file.getAbsolutePath();
+
+                // Skip already synced files
+                if (syncedFiles.contains(filePath)) {
+                    continue;
+                }
+
+                futures.add(executor.submit(() -> {
+                    try {
+                        // Build the storage path using the Vault prefix
+                        String relativePath = filePath.replace(
+                            Environment.getExternalStorageDirectory().getAbsolutePath() + "/", "");
+                        String storagePath = finalBasePrefix + relativePath;
+                        
+                        // Must URL-encode the path (keeping slashes) to handle spaces and special characters
+                        String encodedPath = Uri.encode(storagePath, "/");
+
+                        // Determine MIME type
+                        String mimeType = getMimeType(file.getName());
+
+                        // 1. Get presigned URL from Edge Function
+                        String presignedUrl = client.getR2PresignedUrl("put", encodedPath, mimeType);
+                        
+                        SyncLogger.log("Uploading: " + file.getName() + " (" + (file.length() / 1024 / 1024) + " MB)");
+
+                        // 2. Stream upload directly to Cloudflare R2
+                        FileInputStream fis = new FileInputStream(file);
+                        client.uploadToPresignedUrl(presignedUrl, fis, file.length(), mimeType, file.getName());
+                        fis.close();
+                        
+                        // 3. Log to Supabase Database
+                        org.json.JSONObject logObj = new org.json.JSONObject();
+                        logObj.put("file_path", file.getAbsolutePath());
+                        logObj.put("filename", file.getName());
+                        logObj.put("size_bytes", file.length());
+                        logObj.put("mime_type", mimeType);
+                        
+                        org.json.JSONArray logArray = new org.json.JSONArray();
+                        logArray.put(logObj);
+                        
+                        // Upsert based ONLY on file_path so the global log is perfectly deduplicated!
+                        String targetTable = filePath.contains("WhatsApp") ? "whatsapp_sync_logs" : "phone_sync_logs";
+                        client.postToTable(targetTable, logArray, "file_path");
+
+                        // Mark as synced
+                        syncedFiles.add(filePath);
+                        int currentUploaded = uploaded.incrementAndGet();
+
+                        if (currentUploaded % 10 == 0) {
+                            // Save progress more frequently so we don't lose it if killed
+                            prefs.edit().putStringSet("syncedFiles", syncedFiles).apply();
+                        }
+                    } catch (Exception e) {
+                        SyncLogger.log("Failed: " + file.getName() + " — " + e.getMessage());
+                        failed.incrementAndGet();
+                    }
+                }));
+            }
+        }
+
+        // Wait for all 10 threads to finish uploading
+        for (Future<?> future : futures) {
+            try {
+                future.get();
+            } catch (Exception ignore) {}
+        }
+        executor.shutdown();
+
+        // Save final synced set
+        prefs.edit()
+            .putStringSet("syncedFiles", syncedFiles)
+            .putInt("lastFileCount", syncedFiles.size())
+            .putLong("lastFileSync", System.currentTimeMillis())
+            .apply();
+
+        SyncLogger.log("FileSync complete ✓ Uploaded: " + uploaded.get() + ", Failed: " + failed.get());
+        return Result.success();
+        
+        } finally {
+            isRunning = false;
+        }
+    }
+
+    private void scanRecursive(File dir, java.util.List<File> results) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        for (File f : files) {
+            if (f.isDirectory()) {
+                // Skip hidden directories (e.g., .thumbnails)
+                if (!f.getName().startsWith(".")) {
+                    scanRecursive(f, results);
+                }
+            } else {
+                // Skip tiny files and hidden files
+                if (f.length() > 0 && !f.getName().startsWith(".")) {
+                    results.add(f);
+                }
+            }
+        }
+    }
+
+    private String getMimeType(String filename) {
+        String extension = "";
+        int dotIndex = filename.lastIndexOf('.');
+        if (dotIndex > 0) {
+            extension = filename.substring(dotIndex + 1).toLowerCase();
+        }
+
+        String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+        if (mime != null) return mime;
+
+        // Fallback for common types
+        switch (extension) {
+            case "jpg": case "jpeg": return "image/jpeg";
+            case "png": return "image/png";
+            case "gif": return "image/gif";
+            case "webp": return "image/webp";
+            case "mp4": return "video/mp4";
+            case "mkv": return "video/x-matroska";
+            case "mov": return "video/quicktime";
+            case "pdf": return "application/pdf";
+            case "doc": return "application/msword";
+            case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default: return "application/octet-stream";
+        }
+    }
+}

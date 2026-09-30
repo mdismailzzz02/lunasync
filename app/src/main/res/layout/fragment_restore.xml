@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Restore Data"
+            android:textSize="22sp"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"
+            android:layout_marginTop="24dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pull data from your vault directly into this phone."
+            android:textSize="13sp"
+            android:textColor="@color/text_muted"
+            android:layout_marginBottom="24dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_background"
+            android:padding="20dp"
+            android:layout_marginBottom="16dp">
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="What to restore?"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <CheckBox
+                android:id="@+id/cbContacts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Contacts"
+                android:textColor="@color/text_primary"
+                android:checked="false"
+                android:layout_marginBottom="8dp" />
+
+            <CheckBox
+                android:id="@+id/cbCallLogs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Call Logs"
+                android:textColor="@color/text_primary"
+                android:checked="false"
+                android:layout_marginBottom="8dp" />
+
+            <CheckBox
+                android:id="@+id/cbSms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SMS Messages (Requires Default App change)"
+                android:textColor="@color/text_primary"
+                android:checked="false"
+                android:layout_marginBottom="8dp" />
+                
+            <CheckBox
+                android:id="@+id/cbWhatsApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="WhatsApp Media Folder"
+                android:textColor="@color/accent_green"
+                android:checked="false"
+                android:layout_marginBottom="8dp" />
+
+            <CheckBox
+                android:id="@+id/cbDcim"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DCIM (Camera Roll)"
+                android:textColor="@color/accent_green"
+                android:checked="false"
+                android:layout_marginBottom="8dp" />
+
+            <CheckBox
+                android:id="@+id/cbPictures"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Pictures (Screenshots etc)"
+                android:textColor="@color/accent_green"
+                android:checked="false"
+                android:layout_marginBottom="8dp" />
+
+            <CheckBox
+                android:id="@+id/cbDocuments"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Documents"
+                android:textColor="@color/accent_green"
+                android:checked="false"
+                android:layout_marginBottom="8dp" />
+
+            <CheckBox
+                android:id="@+id/cbDownload"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Downloads"
+                android:textColor="@color/accent_green"
+                android:checked="false"
+                android:layout_marginBottom="24dp" />
+                
+            <Button
+                android:id="@+id/btnRestore"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/btn_blue"
+                android:text="📥  START RESTORE"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textAllCaps="false" />
+        </LinearLayout>
+        
+        <!-- Live Status -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_background"
+            android:padding="20dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Restore Log"
+                android:textSize="15sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <ScrollView
+                android:id="@+id/restoreLogScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:background="@drawable/log_background"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/tvRestoreLogs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Ready..."
+                    android:textSize="11sp"
+                    android:textColor="@color/accent_cyan"
+                    android:fontFamily="monospace"
+                    android:lineSpacingMultiplier="1.4" />
+            </ScrollView>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
