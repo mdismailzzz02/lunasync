@@ -151,6 +151,12 @@ public class FileSyncWorker extends Worker {
                         logObj.put("size_bytes", file.length());
                         logObj.put("mime_type", mimeType);
                         
+                        // Generate thumbnail
+                        String thumbBase64 = generateThumbnail(file, mimeType);
+                        if (thumbBase64 != null) {
+                            logObj.put("thumbnail_key", thumbBase64);
+                        }
+                        
                         org.json.JSONArray logArray = new org.json.JSONArray();
                         logArray.put(logObj);
                         
@@ -195,6 +201,65 @@ public class FileSyncWorker extends Worker {
         } finally {
             isRunning = false;
         }
+    }
+
+    private String generateThumbnail(File file, String mimeType) {
+        try {
+            if (mimeType != null && mimeType.startsWith("image/")) {
+                android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+                options.inJustDecodeBounds = true;
+                android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+                int outWidth = options.outWidth;
+                int outHeight = options.outHeight;
+                if (outWidth == 0 || outHeight == 0) return null;
+                
+                int inSampleSize = 1;
+                while (outWidth / inSampleSize > 400 || outHeight / inSampleSize > 400) {
+                    inSampleSize *= 2;
+                }
+                
+                options.inJustDecodeBounds = false;
+                options.inSampleSize = inSampleSize;
+                android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+                if (bmp == null) return null;
+                
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, baos);
+                byte[] bytes = baos.toByteArray();
+                bmp.recycle();
+                return "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+            } else if (mimeType != null && mimeType.startsWith("video/")) {
+                android.media.MediaMetadataRetriever retriever = new android.media.MediaMetadataRetriever();
+                retriever.setDataSource(file.getAbsolutePath());
+                android.graphics.Bitmap bmp = retriever.getFrameAtTime(1000000); // 1 second
+                if (bmp == null) {
+                    bmp = retriever.getFrameAtTime(0);
+                }
+                retriever.release();
+                if (bmp == null) return null;
+                
+                int width = bmp.getWidth();
+                int height = bmp.getHeight();
+                float scale = 1.0f;
+                if (width > 400 || height > 400) {
+                    scale = 400.0f / Math.max(width, height);
+                }
+                if (scale < 1.0f) {
+                    android.graphics.Bitmap scaledBmp = android.graphics.Bitmap.createScaledBitmap(bmp, (int)(width * scale), (int)(height * scale), true);
+                    bmp.recycle();
+                    bmp = scaledBmp;
+                }
+                
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, baos);
+                byte[] bytes = baos.toByteArray();
+                bmp.recycle();
+                return "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     private void scanRecursive(File dir, java.util.List<File> results) {
