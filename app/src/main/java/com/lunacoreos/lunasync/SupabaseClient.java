@@ -162,6 +162,55 @@ public class SupabaseClient {
         return null;
     }
 
+    public String createVaultCollection(String name, String keyPrefix) {
+        try {
+            org.json.JSONObject payload = new org.json.JSONObject();
+            payload.put("name", name);
+            payload.put("type", "gallery");
+            payload.put("key_prefix", keyPrefix);
+            payload.put("is_hidden", false);
+            payload.put("is_secret", false);
+            
+            org.json.JSONArray array = new org.json.JSONArray();
+            array.put(payload);
+            
+            String urlStr = baseUrl + "/rest/v1/vault_collections?select=id";
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("apikey", apiKey);
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Prefer", "return=representation");
+            conn.setDoOutput(true);
+            
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = array.toString().getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
+            
+            if (conn.getResponseCode() >= 200 && conn.getResponseCode() < 300) {
+                java.io.InputStream is = conn.getInputStream();
+                java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+                String result = s.hasNext() ? s.next() : "";
+                is.close();
+                org.json.JSONArray resArray = new org.json.JSONArray(result);
+                if (resArray.length() > 0) {
+                    return resArray.getJSONObject(0).getString("id");
+                }
+            } else {
+                java.io.InputStream es = conn.getErrorStream();
+                if (es != null) {
+                    java.util.Scanner s = new java.util.Scanner(es).useDelimiter("\\A");
+                    SyncLogger.log("createVaultCollection error: " + (s.hasNext() ? s.next() : ""));
+                }
+            }
+        } catch (Exception e) {
+            SyncLogger.log("createVaultCollection exception: " + e.getMessage());
+        }
+        return null;
+    }
+    
     /**
      * Get a presigned upload URL from the Cloudflare R2 edge function.
      */
