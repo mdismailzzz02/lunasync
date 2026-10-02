@@ -56,7 +56,11 @@ public class FileSyncWorker extends Worker {
                 return Result.failure();
             }
         
-        java.util.List<String> watchFolders = new java.util.ArrayList<>(java.util.Arrays.asList(BASE_WATCH_FOLDERS));
+        java.util.List<String> watchFolders = new java.util.ArrayList<>();
+        if (prefs.getBoolean("sync_DCIM", true)) watchFolders.add("DCIM");
+        if (prefs.getBoolean("sync_Pictures", true)) watchFolders.add("Pictures");
+        if (prefs.getBoolean("sync_Documents", true)) watchFolders.add("Documents");
+        if (prefs.getBoolean("sync_Download", true)) watchFolders.add("Download");
         if (prefs.getBoolean("whatsappSyncEnabled", true)) {
             watchFolders.add("Android/media/com.whatsapp/WhatsApp");
         }

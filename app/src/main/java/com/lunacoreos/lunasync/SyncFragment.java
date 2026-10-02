@@ -25,6 +25,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 public class SyncFragment extends Fragment {
 
     private SwitchMaterial switchFile, switchComm, switchWhatsapp;
+    private SwitchMaterial cbDcim, cbPictures, cbDocuments, cbDownload;
     private Button btnSyncFiles, btnSyncComm, btnClearLogs, btnCopyLogs;
     private TextView tvLogs;
     private ScrollView logScrollView;
@@ -41,6 +42,12 @@ public class SyncFragment extends Fragment {
         switchFile = v.findViewById(R.id.switchFileSync);
         switchComm = v.findViewById(R.id.switchCommSync);
         switchWhatsapp = v.findViewById(R.id.switchWhatsappSync);
+        
+        cbDcim = v.findViewById(R.id.cbSyncDcim);
+        cbPictures = v.findViewById(R.id.cbSyncPictures);
+        cbDocuments = v.findViewById(R.id.cbSyncDocuments);
+        cbDownload = v.findViewById(R.id.cbSyncDownload);
+        
         btnSyncFiles = v.findViewById(R.id.btnSyncFiles);
         btnSyncComm = v.findViewById(R.id.btnSyncComm);
         btnClearLogs = v.findViewById(R.id.btnClearLogs);
@@ -58,6 +65,16 @@ public class SyncFragment extends Fragment {
         switchFile.setChecked(prefs.getBoolean("fileSyncEnabled", false));
         switchComm.setChecked(prefs.getBoolean("commSyncEnabled", false));
         switchWhatsapp.setChecked(prefs.getBoolean("whatsappSyncEnabled", true));
+        
+        cbDcim.setChecked(prefs.getBoolean("sync_DCIM", true));
+        cbPictures.setChecked(prefs.getBoolean("sync_Pictures", true));
+        cbDocuments.setChecked(prefs.getBoolean("sync_Documents", true));
+        cbDownload.setChecked(prefs.getBoolean("sync_Download", true));
+        
+        cbDcim.setOnCheckedChangeListener((buttonView, isChecked) -> prefs.edit().putBoolean("sync_DCIM", isChecked).apply());
+        cbPictures.setOnCheckedChangeListener((buttonView, isChecked) -> prefs.edit().putBoolean("sync_Pictures", isChecked).apply());
+        cbDocuments.setOnCheckedChangeListener((buttonView, isChecked) -> prefs.edit().putBoolean("sync_Documents", isChecked).apply());
+        cbDownload.setOnCheckedChangeListener((buttonView, isChecked) -> prefs.edit().putBoolean("sync_Download", isChecked).apply());
 
         // Setup log listener
         SyncLogger.setListener(fullLog -> uiHandler.post(() -> {

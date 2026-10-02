@@ -76,7 +76,62 @@
                 android:text="⏱ Every 15 minutes  •  Streaming upload (zero RAM)"
                 android:textSize="11sp"
                 android:textColor="@color/accent_green"
-                android:layout_marginBottom="14dp" />
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/cbSyncDcim"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="DCIM"
+                        android:textSize="13sp"
+                        android:layout_marginEnd="16dp"
+                        android:textColor="@color/text_primary" />
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/cbSyncPictures"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Pictures"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_primary" />
+                </LinearLayout>
+                
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/cbSyncDocuments"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Docs"
+                        android:textSize="13sp"
+                        android:layout_marginEnd="16dp"
+                        android:textColor="@color/text_primary" />
+                        
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/cbSyncDownload"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Downloads"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_primary" />
+                </LinearLayout>
+            </LinearLayout>
 
             <Button
                 android:id="@+id/btnSyncFiles"
